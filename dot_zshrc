@@ -1,0 +1,991 @@
+# ============================================================================
+# ZSH CONFIGURATION — M5 PRO SETUP - 48GB
+# Stack: Kubernetes, GCP, AWS, Azure, Terraform, Go, AI Agents
+# Author: Emre Cavunt
+# Web:    emrecavunt.com
+# GitHub: github.com/emrecavunt
+# ============================================================================
+# Self-documenting: Run `cheat` or `cheat <category>` to list all commands
+
+# ============================================================================
+# COMPLETION (must be first — before anything calls compdef)
+# ============================================================================
+autoload -Uz compinit
+# Only regenerate completion dump if older than 24h — faster shell startup
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
+
+# ============================================================================
+# PATH
+# ============================================================================
+export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+
+# ============================================================================
+# HOMEBREW
+# ============================================================================
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+# ============================================================================
+# ENVIRONMENT
+# ============================================================================
+export EDITOR="zed --wait"
+export VISUAL="zed --wait"
+export LANG="en_GB.UTF-8"
+export LC_ALL="en_GB.UTF-8"
+DISABLE_UNTRACKED_FILES_DIRTY="true"   # faster git status in large repos
+# macOS + Homebrew niceties
+export HOMEBREW_NO_ANALYTICS=1
+
+# ============================================================================
+# HISTORY
+# ============================================================================
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE=~/.zsh_history
+setopt EXTENDED_HISTORY           # write timestamp to history
+setopt HIST_EXPIRE_DUPS_FIRST     # expire duplicates first
+setopt HIST_IGNORE_DUPS           # don't record consecutive duplicates
+setopt HIST_IGNORE_SPACE          # don't record commands starting with space
+setopt HIST_VERIFY                # show command before executing from history
+setopt SHARE_HISTORY              # share history between all sessions
+
+# ============================================================================
+# SHELL PLUGINS
+# ============================================================================
+source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# ============================================================================
+# TOOL INITIALISATIONS
+# ============================================================================
+eval "$(mise activate zsh)"       # version manager — must be before starship
+eval "$(starship init zsh)"       # prompt
+eval "$(zoxide init zsh)"         # smart cd
+eval "$(atuin init zsh)"          # shell history
+source <(fzf --zsh)               # fuzzy finder keybindings + completions
+
+# ============================================================================
+# COMPLETIONS (after compinit and tool activations)
+# ============================================================================
+source <(kubectl completion zsh)
+source <(helm completion zsh)
+source <(stern --completion=zsh)
+
+# ============================================================================
+# GCLOUD CONFIGURATION
+# ============================================================================
+# Configurations managed per project via mise [env] block:
+#   CLOUDSDK_ACTIVE_CONFIG_NAME = "mygcpproj-emre" | "mygcpproj-admin"
+#
+# To create configurations:
+#   gcloud config configurations create mygcpproj-emre
+#   gcloud config configurations create mygcpproj-admin
+
+# ============================================================================
+# SELF-DOCUMENTING HELP SYSTEM
+# ============================================================================
+# Usage: Add #@ category: description before any alias or function
+# Run `cheat` to see all categories, `cheat k8s` to filter
+
+cheat() {
+  local filter="${1:-}"
+  local zshrc="${ZDOTDIR:-$HOME}/.zshrc"
+
+  echo ""
+  echo "🚀 PLATFORM ENGINEER CHEAT SHEET"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  [[ -n "$filter" ]] && echo "  Filtering by: $filter"
+
+  awk -v filter="$filter" '
+    /^#@ / {
+      line = $0
+      sub(/^#@ /, "", line)
+      idx = index(line, ": ")
+      if (idx > 0) {
+        category = substr(line, 1, idx - 1)
+        desc = substr(line, idx + 2)
+      } else {
+        category = line
+        desc = ""
+      }
+      next_is_cmd = 1
+      next
+    }
+    next_is_cmd && /^alias [a-zA-Z0-9_-]+="/ {
+      if (filter == "" || tolower(category) ~ tolower(filter)) {
+        line = $0
+        sub(/^alias /, "", line)
+        idx = index(line, "=")
+        if (idx > 0) {
+          cmd = substr(line, 1, idx - 1)
+          if (!(category in cats)) {
+            cats[category] = ""
+            cat_order[++cat_count] = category
+          }
+          cats[category] = cats[category] sprintf("  %-18s %s\n", cmd, desc)
+        }
+      }
+      next_is_cmd = 0
+    }
+    next_is_cmd && /^[a-zA-Z0-9_-]+\(\)/ {
+      if (filter == "" || tolower(category) ~ tolower(filter)) {
+        cmd = $0
+        sub(/\(\).*/, "", cmd)
+        if (!(category in cats)) {
+          cats[category] = ""
+          cat_order[++cat_count] = category
+        }
+        cats[category] = cats[category] sprintf("  %-18s %s\n", cmd, desc)
+      }
+      next_is_cmd = 0
+    }
+    !/^#@ / && !/^alias / && !/^[a-zA-Z0-9_-]+\(\)/ { next_is_cmd = 0 }
+    END {
+      split("k8s k8s-debug tf tg gcp aws az docker git net util nav history fzf ai", order_arr)
+      split("☸️ :🔧:🏗️ :🌍:☁️ :🔶:🔷:🐳:📝:🌐:⚙️ :📁:📜:🔍:🤖", icon_arr, ":")
+      for (i = 1; i <= 15; i++) {
+        cat = order_arr[i]
+        if (cat in cats) {
+          printf "\n  %s %s\n", icon_arr[i], toupper(cat)
+          printf "  ────────────────────────────────────────\n"
+          printf "%s", cats[cat]
+          delete cats[cat]
+        }
+      }
+      for (cat in cats) {
+        printf "\n  📌 %s\n", toupper(cat)
+        printf "  ────────────────────────────────────────\n"
+        printf "%s", cats[cat]
+      }
+    }
+  ' "$zshrc"
+
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  💡 Usage: cheat [filter]  Examples: cheat k8s, cheat aws, cheat git"
+  echo ""
+}
+
+# ============================================================================
+# MODERN CLI REPLACEMENTS
+# ============================================================================
+#@ nav: cat with syntax highlighting
+alias cat='bat'
+#@ nav: cat without paging
+alias cata='bat --paging=never'
+#@ nav: list directory
+alias ls='eza --icons --git'
+#@ nav: list with details
+alias ll='eza -la --icons --git'
+#@ nav: tree view
+alias lt='eza --tree --icons --git'
+#@ nav: search in files
+alias grep='rg'
+#@ nav: find files
+alias find='fd'
+#@ nav: smart directory jump
+alias cd='z'
+#@ nav: go up one directory
+alias ..="cd .."
+#@ nav: go up two directories
+alias ...="cd ../.."
+#@ nav: go up three directories
+alias ....="cd ../../.."
+#@ nav: make directory with parents
+alias mkdir="mkdir -pv"
+#@ nav: safe copy
+alias cp="cp -iv"
+#@ nav: safe move
+alias mv="mv -iv"
+#@ nav: safe remove
+alias rm="rm -iv"
+#@ nav: disk usage human readable
+alias df="df -h"
+#@ nav: directory size
+alias du="du -h"
+#@ nav: directory size depth 1
+alias dud="du -d 1 -h"
+#@ nav: memory stats
+alias free="vm_stat"
+#@ nav: clear screen
+alias cls="clear"
+#@ nav: edit zshrc
+alias zshrc="$EDITOR ~/.zshrc"
+#@ nav: reload zshrc
+alias reload="source ~/.zshrc && echo 'zshrc reloaded'"
+#@ nav: edit SSH config
+alias sshconfig="$EDITOR ~/.ssh/config"
+#@ nav: edit hosts file
+alias hosts="sudo $EDITOR /etc/hosts"
+
+# ============================================================================
+# HISTORY ALIASES
+# ============================================================================
+#@ history: full history with timestamps
+alias hist="fc -li 1"
+#@ history: last 50 with timestamps
+alias histn="fc -li -50"
+#@ history: history with elapsed time
+alias histt="fc -liD 1"
+#@ history: search history
+alias hg="history | grep"
+#@ history: repeat last command
+alias r="fc -s"
+#@ history: repeat last command starting with
+
+
+# ============================================================================
+# AI TOOLS
+# ============================================================================
+#@ ai: Claude Code
+alias cc='claude'
+#@ ai: lazygit TUI
+alias lg='lazygit'
+
+# ============================================================================
+# GIT
+# ============================================================================
+#@ git: git CLI
+alias g="git"
+#@ git: short status
+alias gs="git status -sb"
+#@ git: full status
+alias gss="git status"
+#@ git: add all
+alias gaa="git add --all"
+#@ git: interactive add
+alias gapa="git add --patch"
+#@ git: commit with message
+alias gcm="git commit -m"
+#@ git: add and commit
+alias gcam="git commit -am"
+#@ git: amend commit
+alias gca="git commit --amend"
+#@ git: amend no edit
+alias gcan="git commit --amend --no-edit"
+#@ git: force push safely
+alias gpf="git push --force-with-lease"
+#@ git: pull rebase
+alias gpl="git pull --rebase"
+#@ git: fetch all and prune
+alias gup="git fetch --all --prune && git pull --rebase"
+#@ git: log graph
+alias glog="git log --oneline --graph --decorate -20"
+#@ git: log all branches
+alias gloga="git log --oneline --graph --decorate --all -30"
+#@ git: log pretty format
+alias glogp="git log --pretty=format:'%C(yellow)%h%Creset %C(cyan)%ad%Creset %s %C(green)(%an)%Creset' --date=short"
+#@ git: diff color words
+alias gdiff="git diff --color-words"
+#@ git: diff staged
+alias gds="git diff --staged"
+#@ git: quick WIP commit
+alias gwip="git add -A && git commit -m 'WIP'"
+#@ git: undo WIP commit
+alias gunwip="git log -1 --format='%s' | grep -q 'WIP' && git reset HEAD~1"
+#@ git: delete merged branches
+alias gclean="git branch --merged | grep -v '\*\|main\|master\|develop' | xargs -n 1 git branch -d"
+#@ git: fetch and prune
+alias gfp="git fetch --prune"
+#@ git: rebase interactive
+alias grbi="git rebase -i"
+#@ git: rebase continue
+alias grbc="git rebase --continue"
+#@ git: rebase abort
+alias grba="git rebase --abort"
+#@ git: checkout new branch
+alias gcob="git checkout -b"
+#@ git: switch branch
+alias gsw="git switch"
+#@ git: switch create branch
+alias gswc="git switch -c"
+#@ git: restore staged
+alias grss="git restore --staged"
+#@ git: stash changes
+alias gst="git stash"
+#@ git: stash pop
+alias gstp="git stash pop"
+#@ git: stash list
+alias gstl="git stash list"
+#@ git: stash apply
+alias gsta="git stash apply"
+#@ git: stash show
+alias gsts="git stash show -p"
+#@ git: worktree commands
+alias gwt="git worktree"
+#@ git: show remotes
+alias grem="git remote -v"
+#@ git: cherry-pick
+alias gcp="git cherry-pick"
+#@ git: cherry-pick continue
+alias gcpc="git cherry-pick --continue"
+#@ git: blame file
+alias gbl="git blame"
+#@ git: list tags
+alias gtag="git tag -l"
+
+#@ git: shallow clone
+gclone() { git clone --depth=1 "$@"; }
+#@ git: find file in history
+gfind() { git log --all --full-history -- "**/$1"; }
+
+# ============================================================================
+# KUBERNETES
+# ============================================================================
+#@ k8s: kubectl shortcut
+alias k="kubectl"
+#@ k8s: switch context
+alias kc="kubectx"
+#@ k8s: switch namespace
+alias kn="kubens"
+#@ k8s: get resources
+alias kg="kubectl get"
+#@ k8s: get pods
+alias kgp="kubectl get pods"
+#@ k8s: get pods wide
+alias kgpw="kubectl get pods -o wide"
+#@ k8s: get pods all namespaces
+alias kgpa="kubectl get pods --all-namespaces"
+#@ k8s: get services
+alias kgs="kubectl get svc"
+#@ k8s: get services all namespaces
+alias kgsa="kubectl get svc --all-namespaces"
+#@ k8s: get deployments
+alias kgd="kubectl get deploy"
+#@ k8s: get nodes
+alias kgn="kubectl get nodes"
+#@ k8s: get nodes wide
+alias kgno="kubectl get nodes -o wide"
+#@ k8s: get namespaces
+alias kgns="kubectl get namespaces"
+#@ k8s: get ingress
+alias kgi="kubectl get ingress"
+#@ k8s: get configmaps
+alias kgcm="kubectl get configmap"
+#@ k8s: get secrets
+alias kgsec="kubectl get secrets"
+#@ k8s: get PVCs
+alias kgpvc="kubectl get pvc"
+#@ k8s: get storage classes
+alias kgsc="kubectl get storageclass"
+#@ k8s: get events sorted
+alias kgev="kubectl get events --sort-by='.lastTimestamp'"
+#@ k8s: describe pod
+alias kdp="kubectl describe pod"
+#@ k8s: describe service
+alias kds="kubectl describe svc"
+#@ k8s: describe deployment
+alias kdd="kubectl describe deploy"
+#@ k8s: describe node
+alias kdn="kubectl describe node"
+#@ k8s: follow logs
+alias kl="kubectl logs -f"
+#@ k8s: logs previous container
+alias klp="kubectl logs -f --previous"
+#@ k8s: logs tail 100
+alias klt="kubectl logs -f --tail=100"
+#@ k8s: multi-pod log tailing
+alias klog='stern --all-namespaces'
+#@ k8s: exec into pod
+alias ke="kubectl exec -it"
+#@ k8s: apply manifest
+alias kaf="kubectl apply -f"
+#@ k8s: delete manifest
+alias kdf="kubectl delete -f"
+#@ k8s: delete resource
+alias kdel="kubectl delete"
+#@ k8s: edit resource
+alias ked="kubectl edit"
+#@ k8s: get as YAML
+alias kgy="kubectl get -o yaml"
+#@ k8s: get as JSON
+alias kgj="kubectl get -o json"
+#@ k8s: rollout restart
+alias kror="kubectl rollout restart"
+#@ k8s: rollout status
+alias kros="kubectl rollout status"
+#@ k8s: rollout history
+alias kroh="kubectl rollout history"
+#@ k8s: rollout undo
+alias krou="kubectl rollout undo"
+#@ k8s: top nodes
+alias ktopn="kubectl top nodes"
+#@ k8s: top pods
+alias ktopp="kubectl top pods"
+#@ k8s: port forward
+alias kpf="kubectl port-forward"
+
+# ============================================================================
+# KUBERNETES DEBUGGING
+# ============================================================================
+#@ k8s-debug: netshoot debug pod
+testbox() {
+  kubectl run testbox-$(date +%s) --rm -i --tty \
+    --image=nicolaka/netshoot \
+    --restart=Never \
+    -- /bin/bash
+}
+
+#@ k8s-debug: netshoot with hostNetwork
+testbox-host() {
+  kubectl run testbox-host-$(date +%s) --rm -i --tty \
+    --image=nicolaka/netshoot \
+    --restart=Never \
+    --overrides='{
+      "spec": {
+        "hostNetwork": true,
+        "containers": [{
+          "name": "testbox",
+          "image": "nicolaka/netshoot",
+          "stdin": true,
+          "tty": true
+        }]
+      }
+    }' \
+    -- /bin/bash
+}
+
+#@ k8s-debug: minimal busybox pod
+busybox() {
+  kubectl run busybox-$(date +%s) --rm -i --tty \
+    --image=busybox \
+    --restart=Never \
+    -- /bin/sh
+}
+
+#@ k8s-debug: debug node with netshoot
+knode-debug() {
+  local node=${1:-$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')}
+  kubectl debug node/"$node" -it --image=nicolaka/netshoot
+}
+
+#@ k8s-debug: DNS debugging pod
+kdns-debug() {
+  kubectl run dnsutils-$(date +%s) --rm -i --tty \
+    --image=gcr.io/kubernetes-e2e-test-images/dnsutils:1.3 \
+    --restart=Never \
+    -- /bin/sh
+}
+
+#@ k8s-debug: curl from pod
+kcurl() {
+  local pod=$1
+  shift
+  kubectl exec -it "$pod" -- curl "$@"
+}
+
+#@ k8s-debug: ping from pod
+kping() {
+  local pod=$1 target=$2
+  kubectl exec -it "$pod" -- ping -c 3 "$target"
+}
+
+#@ k8s-debug: nslookup from pod
+kpod-nslookup() {
+  local pod=$1 domain=$2
+  kubectl exec -it "$pod" -- nslookup "$domain"
+}
+
+#@ k8s-debug: port forward service
+kpfw() {
+  local svc=$1
+  local local_port=${2:-8080}
+  local remote_port=${3:-80}
+  echo "Forwarding localhost:$local_port → $svc:$remote_port (Ctrl+C to stop)"
+  kubectl port-forward svc/"$svc" "$local_port":"$remote_port"
+}
+
+#@ k8s-debug: list pod IPs and nodes
+kpod-ips() {
+  kubectl get pods -o custom-columns="NAME:.metadata.name,IP:.status.podIP,NODE:.spec.nodeName"
+}
+
+#@ k8s-debug: get endpoints
+kget-ep() {
+  kubectl get endpoints "$@"
+}
+
+#@ k8s-debug: get network policies
+kget-np() {
+  kubectl get networkpolicies "$@"
+}
+
+# ============================================================================
+# TERRAFORM
+# ============================================================================
+#@ tf: terraform
+alias tf="terraform"
+#@ tf: init
+alias tfi="terraform init"
+#@ tf: plan
+alias tfp="terraform plan"
+#@ tf: apply
+alias tfa="terraform apply"
+#@ tf: apply auto-approve
+alias tfaa="terraform apply -auto-approve"
+#@ tf: destroy
+alias tfd="terraform destroy"
+#@ tf: validate
+alias tfv="terraform validate"
+#@ tf: format recursive
+alias tff="terraform fmt -recursive"
+#@ tf: output
+alias tfo="terraform output"
+#@ tf: state list
+alias tfsl="terraform state list"
+#@ tf: state show
+alias tfss="terraform state show"
+#@ tf: workspace list
+alias tfwl="terraform workspace list"
+#@ tf: workspace select
+alias tfws="terraform workspace select"
+#@ tf: workspace new
+alias tfwn="terraform workspace new"
+#@ tf: workspace show
+alias tfwc="terraform workspace show"
+#@ tf: import
+alias tfim="terraform import"
+#@ tf: console
+alias tfc="terraform console"
+#@ tf: graph
+alias tfg="terraform graph"
+#@ tf: providers
+alias tfpr="terraform providers"
+#@ tf: lint
+alias tfl="tflint --recursive"
+#@ tf: cost estimate
+alias tfcost="infracost breakdown --path ."
+#@ tf: generate docs
+alias tfdocs="terraform-docs markdown . > README.md"
+
+# ============================================================================
+# TERRAGRUNT
+# ============================================================================
+#@ tg: terragrunt
+alias tg="terragrunt"
+#@ tg: init
+alias tgi="terragrunt init"
+#@ tg: plan
+alias tgp="terragrunt plan"
+#@ tg: apply
+alias tga="terragrunt apply"
+#@ tg: apply auto-approve
+alias tgaa="terragrunt apply -auto-approve"
+#@ tg: destroy
+alias tgd="terragrunt destroy"
+#@ tg: output
+alias tgo="terragrunt output"
+#@ tg: run-all apply
+alias tgra="terragrunt run-all apply"
+#@ tg: run-all plan
+alias tgrp="terragrunt run-all plan"
+#@ tg: run-all destroy
+alias tgrd="terragrunt run-all destroy"
+#@ tg: run-all init
+alias tgri="terragrunt run-all init"
+#@ tg: validate
+alias tgv="terragrunt validate"
+#@ tg: hcl format
+alias tghclfmt="terragrunt hclfmt"
+
+# ============================================================================
+# GCP
+# ============================================================================
+#@ gcp: config list
+alias gcl="gcloud config list"
+#@ gcp: config list all
+alias gcla="gcloud config list --all"
+#@ gcp: set project
+alias gcs="gcloud config set project"
+#@ gcp: configurations list
+alias gcfgl="gcloud config configurations list"
+#@ gcp: configurations activate
+alias gcfga="gcloud config configurations activate"
+#@ gcp: activate emre.cavunt account
+alias gcp-emre="gcloud config configurations activate mygcpproj-emre"
+#@ gcp: activate admin account
+alias gcp-admin="gcloud config configurations activate mygcpproj-admin"
+#@ gcp: compute instances
+alias gci="gcloud compute instances list"
+#@ gcp: GKE clusters list
+alias gcr="gcloud container clusters list"
+#@ gcp: get GKE credentials
+alias gcrc="gcloud container clusters get-credentials"
+#@ gcp: IAM service accounts
+alias giam="gcloud iam service-accounts list"
+#@ gcp: list projects
+alias gproj="gcloud projects list"
+#@ gcp: Cloud SQL instances
+alias gsql="gcloud sql instances list"
+#@ gcp: read logs
+alias glog="gcloud logging read"
+#@ gcp: Cloud Run services
+alias grun="gcloud run services list"
+#@ gcp: Cloud Functions
+alias gfunc="gcloud functions list"
+#@ gcp: Pub/Sub topics
+alias gpub="gcloud pubsub topics list"
+#@ gcp: who am I
+alias gcpw="gcloud config get-value account"
+
+# ============================================================================
+# AWS
+# ============================================================================
+#@ aws: who am I (STS)
+alias awsw="aws sts get-caller-identity"
+#@ aws: current config
+alias awsr="aws configure list"
+#@ aws: list EC2 instances
+alias ec2l="aws ec2 describe-instances --query 'Reservations[*].Instances[*].[InstanceId,State.Name,InstanceType,PrivateIpAddress,Tags[?Key==\`Name\`].Value|[0]]' --output table"
+#@ aws: running EC2 instances
+alias ec2r="aws ec2 describe-instances --filters 'Name=instance-state-name,Values=running' --output table"
+#@ aws: list EKS clusters
+alias eksl="aws eks list-clusters"
+#@ aws: update kubeconfig for EKS
+alias eksu="aws eks update-kubeconfig --name"
+#@ aws: list S3 buckets
+alias s3l="aws s3 ls"
+#@ aws: S3 copy
+alias s3cp="aws s3 cp"
+#@ aws: S3 sync
+alias s3sync="aws s3 sync"
+#@ aws: S3 remove
+alias s3rm="aws s3 rm"
+#@ aws: list IAM users
+alias iaml="aws iam list-users"
+#@ aws: list IAM roles
+alias iamr="aws iam list-roles"
+#@ aws: list ECR repos
+alias ecrl="aws ecr describe-repositories"
+#@ aws: login to ECR
+alias ecrlogin="aws ecr get-login-password --region \$(aws configure get region) | docker login --username AWS --password-stdin \$(aws sts get-caller-identity --query Account --output text).dkr.ecr.\$(aws configure get region).amazonaws.com"
+#@ aws: tail CloudWatch logs
+alias cwtail="aws logs tail"
+#@ aws: list SSM instances
+alias ssml="aws ssm describe-instance-information"
+#@ aws: SSM session
+alias ssmsh="aws ssm start-session --target"
+#@ aws: list Lambda functions
+alias laml="aws lambda list-functions"
+
+# ============================================================================
+# AZURE
+# ============================================================================
+#@ az: login
+alias azl="az login"
+#@ az: current account
+alias azacc="az account show"
+#@ az: list accounts
+alias azaccl="az account list --output table"
+#@ az: set subscription
+alias azaccs="az account set --subscription"
+#@ az: list AKS clusters
+alias aksl="az aks list --output table"
+#@ az: get AKS credentials
+alias aksc="az aks get-credentials --resource-group"
+#@ az: show AKS cluster
+alias akss="az aks show --resource-group"
+#@ az: list VMs
+alias azvm="az vm list --output table"
+#@ az: list resource groups
+alias azrg="az group list --output table"
+#@ az: create resource group
+alias azrgc="az group create --name"
+#@ az: list storage accounts
+alias azsa="az storage account list --output table"
+#@ az: list ACR registries
+alias acrl="az acr list --output table"
+#@ az: login to ACR
+alias acrlogin="az acr login --name"
+#@ az: list VNets
+alias azvnet="az network vnet list --output table"
+
+# ============================================================================
+# DOCKER (OrbStack — Compose v2 syntax)
+# ============================================================================
+#@ docker: docker CLI
+alias d="docker"
+#@ docker: docker compose v2
+alias dc="docker compose"
+#@ docker: compose up detached
+alias dcu="docker compose up -d"
+#@ docker: compose down
+alias dcd="docker compose down"
+#@ docker: compose logs
+alias dcl="docker compose logs -f"
+#@ docker: compose build
+alias dcb="docker compose build"
+#@ docker: list containers
+alias dps="docker ps"
+#@ docker: list all containers
+alias dpsa="docker ps -a"
+#@ docker: list images
+alias di="docker images"
+#@ docker: exec into container
+alias dex="docker exec -it"
+#@ docker: follow logs
+alias dlogs="docker logs -f"
+#@ docker: remove container
+alias drm="docker rm"
+#@ docker: remove image
+alias drmi="docker rmi"
+#@ docker: system prune all
+alias dprune="docker system prune -af"
+#@ docker: list volumes
+alias dvol="docker volume ls"
+#@ docker: list networks
+alias dnet="docker network ls"
+#@ docker: stop all containers
+alias dstop="docker stop \$(docker ps -q)"
+#@ docker: build with tag
+alias dbuild="docker build -t"
+#@ docker: image layer explorer
+alias ddive="dive"
+#@ docker: scan image for CVEs
+alias dscan="trivy image"
+
+# ============================================================================
+# NETWORKING & DEBUGGING
+# ============================================================================
+#@ net: external IP
+alias myip="curl -s ifconfig.me"
+#@ net: local IP
+alias myiplocal="ifconfig | awk '/inet /&&!/127.0.0.1/{print \$2;exit}'"
+#@ net: listening ports
+alias ports="lsof -i -P -n | grep LISTEN"
+#@ net: all listening
+alias listening="netstat -an | grep LISTEN"
+#@ net: dig short (fallback)
+alias diga="dig +short"
+#@ net: dig all records
+alias digall="dig +noall +answer"
+#@ net: flush DNS cache
+alias flush-dns="sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder"
+#@ net: curl headers only
+alias curlh="curl -I"
+#@ net: curl with JSON header
+alias curlj="curl -H 'Content-Type: application/json'"
+#@ net: curl with timing breakdown
+alias curlt="curl -o /dev/null -s -w 'DNS: %{time_namelookup}s\nConnect: %{time_connect}s\nTTFB: %{time_starttransfer}s\nTotal: %{time_total}s\n'"
+#@ net: curl verbose SSL
+alias curlssl="curl -vI --ssl"
+#@ net: wget with resume
+alias wget="wget -c"
+#@ net: HTTP client
+alias http2="httpie"
+#@ net: ping google
+alias pingg="ping -c 5 google.com"
+#@ net: ping 8.8.8.8
+alias ping8="ping -c 5 8.8.8.8"
+#@ net: live traceroute + ping
+alias tracert="mtr --report-wide"
+#@ net: network scan
+alias scan="nmap -sV"
+#@ net: open ports on host
+alias portscan="nmap -p- --open"
+#@ net: ARP table
+alias arptable="arp -a"
+#@ net: routing table
+alias routes="netstat -rn"
+#@ net: all interfaces
+alias ifinfo="ifconfig -a"
+#@ net: internet speed test
+alias speedtest="speedtest-cli"
+#@ net: check SSL cert dates
+alias sslcheck="openssl s_client -connect"
+
+#@ net: SSL expiry for host
+sslexpiry() {
+  local host=$1
+  if [[ -z "$host" ]]; then
+    echo "Usage: sslexpiry <host[:port]>"
+    return 1
+  fi
+  [[ "$host" != *":"* ]] && host="$host:443"
+  openssl s_client -servername "${host%%:*}" -connect "$host" 2>/dev/null \
+    | openssl x509 -noout -dates
+}
+
+#@ net: gRPC call
+alias grpc="grpcurl"
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+#@ util: show all platform contexts at a glance
+ctx() {
+  echo ""
+  echo "  ☸️  K8s Context:   $(kubectl config current-context 2>/dev/null || echo 'none')"
+  echo "  ☸️  K8s Namespace: $(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || echo 'default')"
+  echo "  ☁️  GCP Account:   $(gcloud config get-value account 2>/dev/null || echo 'none')"
+  echo "  ☁️  GCP Project:   $(gcloud config get-value project 2>/dev/null || echo 'none')"
+  echo "  🔶 AWS Profile:   ${AWS_PROFILE:-default}"
+  echo "  🔷 Azure Sub:     $(az account show --query name -o tsv 2>/dev/null || echo 'none')"
+  echo "  🏗️  TF Workspace:  $(terraform workspace show 2>/dev/null || echo 'N/A')"
+  echo ""
+}
+
+#@ util: check all tool versions
+versions() {
+  echo ""
+  echo "  📊 TOOL VERSIONS"
+  echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  check_ver() {
+    local cmd=$1 name=$2 flag=${3:---version}
+    if command -v "$cmd" &>/dev/null; then
+      ver=$($cmd ${=flag} 2>&1 | head -n 1)
+      printf "  %-16s %s\n" "$name" "$ver"
+    else
+      printf "  %-16s %s\n" "$name" "not installed"
+    fi
+  }
+  check_ver "go"          "Go"           "version"
+  check_ver "node"        "Node"         "--version"
+  check_ver "python3"     "Python"       "--version"
+  check_ver "terraform"   "Terraform"    "--version"
+  check_ver "terragrunt"  "Terragrunt"   "--version"
+  check_ver "kubectl"     "kubectl"      "version --client --short"
+  check_ver "helm"        "Helm"         "version --short"
+  check_ver "k9s"         "k9s"          "version --short"
+  check_ver "gcloud"      "gcloud"       "version"
+  check_ver "aws"         "AWS CLI"      "--version"
+  check_ver "az"          "Azure CLI"    "--version"
+  check_ver "docker"      "Docker"       "--version"
+  check_ver "claude"      "Claude Code"  "--version"
+  check_ver "mise"        "mise"         "--version"
+  echo ""
+}
+
+#@ util: decode k8s secret (all keys or specific key)
+kdecode() {
+  local secret=$1 key=$2
+  if [[ -z "$secret" ]]; then
+    echo "Usage: kdecode <secret-name> [key]"
+    return 1
+  fi
+  if [[ -z "$key" ]]; then
+    kubectl get secret "$secret" -o json \
+      | jq -r '.data | to_entries[] | "\(.key): \(.value | @base64d)"'
+  else
+    kubectl get secret "$secret" -o jsonpath="{.data.$key}" | base64 -d
+    echo
+  fi
+}
+
+#@ util: view resource as YAML in editor
+kyaml() {
+  kubectl get "$@" -o yaml | $EDITOR -
+}
+
+#@ util: watch pods (refreshes every 2s)
+kwatch() {
+  watch -n 2 "kubectl get pods $*"
+}
+
+#@ util: get ALL resources in a namespace
+kall() {
+  kubectl api-resources --verbs=list --namespaced -o name \
+    | xargs -n 1 kubectl get --show-kind --ignore-not-found -n "${1:-default}"
+}
+
+#@ util: pretty print JSON
+json() { cat "$@" | jq '.'; }
+
+#@ util: YAML to JSON
+y2j() { cat "$@" | yq -o=json; }
+
+#@ util: JSON to YAML
+j2y() { cat "$@" | yq -P; }
+
+#@ util: base64 encode
+b64e() { echo -n "$1" | base64; }
+
+#@ util: base64 decode
+b64d() { echo -n "$1" | base64 -d; echo; }
+
+#@ util: generate random password
+genpass() { openssl rand -base64 ${1:-32} | tr -d '/+=' | head -c ${1:-32}; echo; }
+
+#@ util: generate UUID
+uuid() { uuidgen | tr '[:upper:]' '[:lower:]'; }
+
+#@ util: ISO 8601 timestamp
+ts() { date +%Y-%m-%dT%H:%M:%S%z; }
+
+#@ util: Unix timestamp
+uts() { date +%s; }
+
+#@ util: scan directory for secrets (trivy)
+secrets-scan() {
+  trivy fs --scanners secret "${1:-.}"
+}
+
+#@ util: scan IaC for misconfigs (trivy)
+iac-scan() {
+  trivy config "${1:-.}"
+}
+
+# ============================================================================
+# FZF INTEGRATIONS
+# ============================================================================
+#@ fzf: fuzzy find files with preview
+alias ff="fzf --preview 'bat --color=always {}'"
+
+#@ fzf: fuzzy k8s context switch
+kctx() {
+  kubectl config use-context $(kubectl config get-contexts -o name | fzf --prompt="context> ")
+}
+
+#@ fzf: fuzzy namespace switch
+kns-fzf() {
+  kubectl config set-context --current \
+    --namespace=$(kubectl get ns -o jsonpath='{.items[*].metadata.name}' | tr ' ' '\n' \
+    | fzf --prompt="namespace> ")
+}
+
+#@ fzf: fuzzy git branch checkout
+gbf() {
+  git checkout $(git branch -a | fzf --prompt="branch> " \
+    | sed 's/remotes\/origin\///' | xargs)
+}
+
+#@ fzf: fuzzy git log viewer
+glf() {
+  git log --oneline | fzf --prompt="commit> " --preview 'git show --color=always {1}'
+}
+
+#@ fzf: fuzzy gcloud config switch
+gcpf() {
+  gcloud config configurations activate \
+    $(gcloud config configurations list --format="value(name)" | fzf --prompt="gcp config> ")
+}
+
+#@ fzf: fuzzy AWS profile switch
+awsf() {
+  export AWS_PROFILE=$(aws configure list-profiles | fzf --prompt="aws profile> ")
+  echo "AWS_PROFILE set to: $AWS_PROFILE"
+}
+
+#@ fzf: fuzzy kubectl context with preview
+kctx-preview() {
+  kubectl config get-contexts \
+    | fzf --header-lines=1 --prompt="context> " \
+      --preview 'kubectl config get-contexts {2} 2>/dev/null' \
+    | awk '{print $2}' \
+    | xargs kubectl config use-context
+}
+
+# ============================================================================
+# END
+# ============================================================================
+# Run `cheat` to see all commands
+# Run `cheat <category>` to filter: k8s, k8s-debug, tf, tg, gcp, aws, az,
+#   docker, git, net, util, nav, history, fzf, ai
+#
+# Benchmark startup time:
+#   for i in $(seq 1 5); do /usr/bin/time zsh -i -c exit; done
