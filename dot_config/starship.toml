@@ -1,0 +1,149 @@
+# ============================================================================
+# Starship Prompt — emrecavunt M5 Pro
+# Theme: Catppuccin Mocha
+# Font:  JetBrainsMono Nerd Font
+# ============================================================================
+#
+# Catppuccin Mocha palette reference
+# -----------------------------------
+# rosewater  #f5e0dc    mauve    #cba6f7    teal     #94e2d5
+# flamingo   #f2cdcd    red      #f38ba8    sky      #89dceb
+# pink       #f5c2e7    maroon   #eba0ac    sapphire #74c7ec
+# peach      #fab387    green    #a6e3a1    blue     #89b4fa
+# yellow     #f9e2af    lavender #b4befe    text     #cdd6f4
+# ============================================================================
+
+#format = """
+#$os$directory$git_branch$git_status$golang$nodejs$terraform$kubernetes$aws$gcloud\
+#$fill
+#$cmd_duration$memory_usage$time
+#$character"""
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$golang\
+$nodejs\
+$python\
+$character"""
+
+right_format = """
+$kubernetes\
+$gcloud\
+$terraform\
+$cmd_duration$memory_usage$time\
+"""
+
+# ============================================================================
+# LEFT SIDE
+# ============================================================================
+
+[os]
+disabled = false
+format = "[$symbol]($style) "
+style = "bold fg:#b4befe"    # lavender
+
+[os.symbols]
+Macos = ""
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "bold fg:#89b4fa"    # blue
+format = "[$path]($style)[$read_only]($read_only_style) "
+read_only = " 󰌾"
+read_only_style = "fg:#f38ba8"   # red
+
+[git_branch]
+format = "[$symbol$branch]($style) "
+symbol = " "
+style = "bold fg:#cba6f7"    # mauve
+truncation_length = 25
+truncation_symbol = "…"
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = "bold fg:#f38ba8"    # red
+conflicted = "✖"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked = "?${count}"
+modified = "●${count}"
+staged = "+${count}"
+stashed = "≡"
+renamed = ""
+deleted = ""
+
+[golang]
+format = "[$symbol($version)]($style) "
+symbol = "go"
+style = "bold fg:#89dceb"    # sky
+detect_files = ["go.mod", "go.sum", "*.go"]
+
+[nodejs]
+format = "[$symbol($version)]($style) "
+symbol = "node"
+style = "bold fg:#a6e3a1"    # green
+detect_files = ["package.json", ".nvmrc", ".node-version"]
+detect_folders = ["node_modules"]
+
+[terraform]
+format = "[$symbol$workspace]($style) "
+symbol = "󱁢 "
+style = "bold fg:#cba6f7"    # mauve
+detect_files = ["*.tf", "*.tfvars"]
+detect_folders = [".terraform"]
+
+[kubernetes]
+disabled = false
+format = "[$symbol$context( \\($namespace\\))]($style) "
+symbol = "󱃾 "
+style = "bold fg:#89b4fa"    # blue
+detect_files = ["k8s", "kubernetes"]
+
+[aws]
+disabled = false
+format = "[$symbol$profile]($style) "
+symbol = "  "
+style = "bold fg:#fab387"    # peach
+
+[gcloud]
+disabled = false
+format = "[󱇶 $account( \\($project\\))]($style) "
+style = "bold fg:#74c7ec"    # sapphire
+
+# ============================================================================
+# RIGHT SIDE (after $fill)
+# ============================================================================
+
+[cmd_duration]
+min_time = 2_000
+format = "[ $duration]($style) "
+style = "bold fg:#f9e2af"    # yellow
+
+[memory_usage]
+disabled = false
+threshold = 70               # only show when RAM usage exceeds 70%
+format = "[$symbol${ram}]($style) "
+symbol = "󰍛 "
+style = "bold fg:#f38ba8"    # red — catches your eye when agents are eating RAM
+
+[time]
+disabled = false
+time_format = "%H:%M:%S"
+style = "fg:#585b70"         # surface2 — subtle, doesn't compete
+format = ' [\[$time\]]($style)'
+
+[fill]
+symbol = " "
+
+# ============================================================================
+# PROMPT CHARACTER
+# ============================================================================
+
+[character]
+success_symbol = "[❯❯](bold fg:#a6e3a1)"   # green
+error_symbol = "[❯❯](bold fg:#f38ba8)"     # red
+vimcmd_symbol = "[❮❮](bold fg:#cba6f7)"   # mauve — for vim mode

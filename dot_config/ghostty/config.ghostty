@@ -1,0 +1,63 @@
+# ============================================================================
+# Ghostty Config — emrecavunt M5 Pro
+# Theme: Catppuccin Mocha
+# Font:  JetBrainsMono Nerd Font
+# ============================================================================
+
+# ── Font ──────────────────────────────────────────────────────────────────────
+font-family = "JetBrainsMono Nerd Font"
+font-size = 13.5
+font-feature = -calt
+font-feature = -liga
+font-feature = -dlig
+
+# ── Catppuccin Mocha Colours ──────────────────────────────────────────────────
+background = #1e1e2e
+foreground = #cdd6f4
+cursor-color = #f5e0dc
+selection-background = #313244
+selection-foreground = #cdd6f4
+
+# Normal colours (0-7)
+palette = 0=#45475a
+palette = 1=#f38ba8
+palette = 2=#a6e3a1
+palette = 3=#f9e2af
+palette = 4=#89b4fa
+palette = 5=#f5c2e7
+palette = 6=#94e2d5
+palette = 7=#bac2de
+
+# Bright colours (8-15)
+palette = 8=#585b70
+palette = 9=#f38ba8
+palette = 10=#a6e3a1
+palette = 11=#f9e2af
+palette = 12=#89b4fa
+palette = 13=#f5c2e7
+palette = 14=#94e2d5
+palette = 15=#a6adc8
+
+# ── Transparency ──────────────────────────────────────────────────────────────
+background-opacity = 0.92
+background-opacity-cells = true
+background-blur = 20
+
+# ── Window ────────────────────────────────────────────────────────────────────
+window-theme = dark
+window-padding-x = 10
+window-padding-y = 8
+macos-titlebar-style = hidden
+macos-option-as-alt = true
+
+# ── Cursor ────────────────────────────────────────────────────────────────────
+cursor-style = bar
+cursor-style-blink = true
+
+# ── Behaviour ─────────────────────────────────────────────────────────────────
+copy-on-select = false
+confirm-close-surface = false
+shell-integration = detect
+
+# ── Keybinds ──────────────────────────────────────────────────────────────────
+keybind = shift+cmd+t=toggle_background_opacity

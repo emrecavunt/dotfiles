@@ -1,0 +1,29 @@
+min_version = "2026.3.13"
+
+[settings]
+idiomatic_version_file_enable_tools = []
+experimental = true
+jobs = 6
+
+[tools]
+go = "latest"
+kubectl = "latest"
+node = "lts"
+python = "3.13"
+terraform = "latest"
+terragrunt = "latest"
+uv = "latest"
+ruff = "latest"
+pnpm = "latest"
+
+[tasks.versions]
+run = """
+echo "== mise current =="
+mise ls --current
+"""
+
+[tasks.up]
+run = """
+mise upgrade
+mise ls --current
+"""
