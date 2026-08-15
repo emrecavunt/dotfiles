@@ -1,0 +1,44 @@
+[user]
+	name = Emre Cavunt
+	email = emre.cavunt@gmail.com
+	signingkey = ~/.ssh/id_ed25519_github_signing.pub
+
+[core]
+	pager = delta
+	editor = zed --wait
+
+[delta]
+	navigate = true
+	side-by-side = true
+	syntax-theme = Catppuccin-mocha
+
+[interactive]
+	diffFilter = delta --color-only
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
+
+[rebase]
+	autoStash = true
+	updateRefs = true
+
+[gpg]
+	format = ssh
+
+[commit]
+	gpgsign = true
+
+[tag]
+	gpgSign = true
+
+[diff]
+	colorMoved = default
+
+[merge]
+	conflictStyle = zdiff3
