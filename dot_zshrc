@@ -18,6 +18,17 @@ else
   compinit -C
 fi
 
+# Substring + case-insensitive matching (Oh My Zsh / p10k default).
+# Type "infra" + Tab to match "asklepion-infra".
+setopt COMPLETE_IN_WORD
+setopt ALWAYS_TO_END
+zstyle ':completion:*' matcher-list \
+  'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' \
+  'r:|[._-]=* r:|=*' \
+  'l:|=* r:|=*'
+zstyle ':completion:*' menu select
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
 # ============================================================================
 # PATH
 # ============================================================================
@@ -268,8 +279,12 @@ alias gcam="git commit -am"
 alias gca="git commit --amend"
 #@ git: amend no edit
 alias gcan="git commit --amend --no-edit"
+#@ git: push
+alias gp="git push"
 #@ git: force push safely
 alias gpf="git push --force-with-lease"
+#@ git: pull
+alias gl="git pull"
 #@ git: pull rebase
 alias gpl="git pull --rebase"
 #@ git: fetch all and prune
